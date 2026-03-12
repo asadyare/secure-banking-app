@@ -57,7 +57,7 @@ const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 banking-gradient flex-col justify-between p-12 text-primary-foreground">
         <div className="flex items-center gap-3">
           <Building2 className="h-8 w-8" />
-          <span className="font-heading text-2xl font-bold">SecureBank</span>
+          <span className="font-heading text-2xl font-bold">BaawisanSecureBank</span>
         </div>
         <div className="space-y-6">
           <h1 className="font-heading text-5xl font-bold leading-tight text-balance">
@@ -71,7 +71,7 @@ const Auth = () => {
             <span className="text-sm">256-bit encryption · FDIC insured · 24/7 monitoring</span>
           </div>
         </div>
-        <p className="text-sm opacity-50">© 2026 SecureBank. All rights reserved.</p>
+        <p className="text-sm opacity-50">© 2026 BaawisanSecureBank. All rights reserved.</p>
       </div>
 
       {/* Right panel - form */}
@@ -79,7 +79,7 @@ const Auth = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <Building2 className="h-7 w-7 text-primary" />
-            <span className="font-heading text-xl font-bold text-foreground">SecureBank</span>
+            <span className="font-heading text-xl font-bold text-foreground">BaawisanSecureBank</span>
           </div>
 
           <div>
@@ -87,7 +87,7 @@ const Auth = () => {
               {isLogin ? 'Welcome back' : 'Open your account'}
             </h2>
             <p className="mt-2 text-muted-foreground">
-              {isLogin ? 'Sign in to access your accounts' : 'Get started with SecureBank today'}
+              {isLogin ? 'Sign in to access your accounts' : 'Get started with BaawisanSecureBank today'}
             </p>
           </div>
 
