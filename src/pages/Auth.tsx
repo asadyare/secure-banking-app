@@ -79,7 +79,7 @@ const Auth = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <Building2 className="h-7 w-7 text-primary" />
-            <span className="font-heading text-xl font-bold text-foreground">SecureBank</span>
+            <span className="font-heading text-xl font-bold text-foreground">BaawisanSecureBank</span>
           </div>
 
           <div>
@@ -87,7 +87,7 @@ const Auth = () => {
               {isLogin ? 'Welcome back' : 'Open your account'}
             </h2>
             <p className="mt-2 text-muted-foreground">
-              {isLogin ? 'Sign in to access your accounts' : 'Get started with SecureBank today'}
+              {isLogin ? 'Sign in to access your accounts' : 'Get started with BaawisanSecureBank today'}
             </p>
           </div>
 
