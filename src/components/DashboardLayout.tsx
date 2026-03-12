@@ -79,7 +79,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <header className="lg:hidden flex items-center justify-between border-b border-border bg-card px-4 py-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />
-            <span className="font-heading text-lg font-bold">SecureBank</span>
+            <span className="font-heading text-lg font-bold">BaawisanSecureBank</span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
