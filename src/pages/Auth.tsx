@@ -57,7 +57,7 @@ const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 banking-gradient flex-col justify-between p-12 text-primary-foreground">
         <div className="flex items-center gap-3">
           <Building2 className="h-8 w-8" />
-          <span className="font-heading text-2xl font-bold">SecureBank</span>
+          <span className="font-heading text-2xl font-bold">BaawisanSecureBank</span>
         </div>
         <div className="space-y-6">
           <h1 className="font-heading text-5xl font-bold leading-tight text-balance">
@@ -71,7 +71,7 @@ const Auth = () => {
             <span className="text-sm">256-bit encryption · FDIC insured · 24/7 monitoring</span>
           </div>
         </div>
-        <p className="text-sm opacity-50">© 2026 SecureBank. All rights reserved.</p>
+        <p className="text-sm opacity-50">© 2026 BaawisanSecureBank. All rights reserved.</p>
       </div>
 
       {/* Right panel - form */}
