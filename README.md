@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# Baawisan Bank (web app)
 
-## Project info
+Vite + React + TypeScript + Tailwind + shadcn/ui, with Supabase for auth and data.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Scripts
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
+npm run build
+npm run preview
+npm test
+npm run lint
 ```
 
-**Edit a file directly in GitHub**
+## Git hooks (Husky)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+After `npm install`, the **`prepare`** script registers Husky:
 
-**Use GitHub Codespaces**
+| Hook | What runs |
+|------|-----------|
+| **pre-commit** | **lint-staged** (ESLint on staged `*.{ts,tsx,js,jsx,mjs,cjs}`) → **gitleaks protect --staged** (blocks secrets in the commit) |
+| **pre-push** | Full **`npm run lint`** → **`gitleaks detect`** on the repo (blocks push if either fails) |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+If **lint** or **gitleaks** fails, the commit or push is **aborted**. Install **gitleaks** and ensure it is on your `PATH` ([install](https://github.com/gitleaks/gitleaks#installing)). Examples: `winget install gitleaks`, `choco install gitleaks`, `scoop install gitleaks`, `brew install gitleaks`.
 
-## What technologies are used for this project?
+To skip hooks (not recommended): `git commit --no-verify` / `git push --no-verify`.
 
-This project is built with:
+Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for local development.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Supabase CLI
 
-## How can I deploy this project?
+The CLI is installed as a dev dependency so you do **not** need a global `supabase` on your PATH. From the project root, use **`npx`** (or **`npm run supabase --`**):
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```sh
+npx supabase login
+npx supabase init
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase db push
+```
 
-## Can I connect a custom domain to my Lovable project?
+On Windows, the same commands work in **PowerShell**, **cmd**, or **Git Bash**. If you prefer a global install: `npm install -g supabase`, then ensure your npm global `bin` folder is on your PATH.
 
-Yes, you can!
+## Stack
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Vite, React, React Router, TanStack Query
+- Supabase (Auth + Postgres)
+- Vitest, Playwright (E2E folder: `tests/e2e`)
+- Terraform on AWS (see `terraform/README.md`), **Checkov** IaC scanning with custom policies (see `checkov/README.md` and `checkov.yaml`)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Deployment
+
+- **Static (recommended default):** S3 + CloudFront via Terraform; CI deploy in `.github/workflows/deploy-frontend.yml`. See `terraform/README.md`.
+- **Go-live checklist (Terraform apply → GitHub secrets → deploy):** [docs/deploy-aws.md](docs/deploy-aws.md)
+- **Docker:** `Dockerfile` + `docker-compose.yml` for local/staging-style runs; production containers are optional—see comparison below.
+
+**[Static vs Docker — comparison and recommendation →](docs/deployment-comparison.md)**

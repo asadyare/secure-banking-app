@@ -1,0 +1,21 @@
+# Gitleaks — https://github.com/gitleaks/gitleaks
+# Auto-loaded when running `gitleaks detect` / `gitleaks protect` from the repo root.
+# CLI flags (e.g. --redact, --verbose) still apply; this file extends the built-in rules.
+
+title = "secure-banking-app"
+
+# Minimum gitleaks version for this config file format.
+minVersion = "8.18.0"
+
+[extend]
+# Use all default rules (AWS keys, tokens, private keys, etc.).
+useDefault = true
+
+# Project-specific allowlists only — keep narrow; do not whitelist real secret stores.
+[[allowlists]]
+description = "Example env and Terraform templates (placeholders only, not live credentials)"
+paths = [
+  '''(?:^|/)\.env\.example$''',
+  '''(?:^|/)terraform/terraform\.tfvars\.example$''',
+  '''(?:^|/)terraform/backend-config\.example\.hcl$''',
+]

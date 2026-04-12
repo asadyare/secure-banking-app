@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -e
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "→ eslint (full project)"
+npm run lint
+
+echo "→ gitleaks (repository scan before push)"
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo ""
+  echo "ERROR: gitleaks is not installed or not on PATH."
+  echo "Install: https://github.com/gitleaks/gitleaks#installing"
+  exit 1
+fi
+gitleaks detect --source . --redact --verbose --exit-code 1

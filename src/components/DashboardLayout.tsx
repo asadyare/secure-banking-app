@@ -7,9 +7,11 @@ import {
   History,
   Settings,
   LogOut,
-  Building2,
+  Infinity as InfinityIcon,
   Menu,
   X,
+  Shield,
+  HandCoins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -20,16 +22,17 @@ const navItems = [
   { to: '/transfer', icon: ArrowLeftRight, label: 'Transfer' },
   { to: '/transactions', icon: History, label: 'Transactions' },
   { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/security-framework', icon: Shield, label: 'Security posture' },
 ];
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   return (
@@ -37,11 +40,28 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:w-64 flex-col banking-gradient text-sidebar-foreground">
         <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <Building2 className="h-7 w-7 text-sidebar-primary" />
-          <span className="font-heading text-xl font-bold text-sidebar-accent-foreground">BaawisanSecureBank</span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-violet-600 shadow-md shadow-fuchsia-500/20">
+            <InfinityIcon className="h-5 w-5 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="font-heading text-xl font-bold text-sidebar-accent-foreground">Baawisan Bank</span>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
+          {isAdmin ? (
+            <NavLink
+              to="/admin/credit"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                }`
+              }
+            >
+              <HandCoins className="h-5 w-5" />
+              Admin credit
+            </NavLink>
+          ) : null}
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -78,8 +98,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       <div className="flex flex-1 flex-col">
         <header className="lg:hidden flex items-center justify-between border-b border-border bg-card px-4 py-3">
           <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="font-heading text-lg font-bold">BaawisanSecureBank</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-violet-600">
+              <InfinityIcon className="h-4 w-4 text-white" strokeWidth={2.5} />
+            </div>
+            <span className="font-heading text-lg font-bold">Baawisan Bank</span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -89,6 +111,20 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden border-b border-border bg-card px-4 py-2">
+            {isAdmin ? (
+              <NavLink
+                to="/admin/credit"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-secondary'
+                  }`
+                }
+              >
+                <HandCoins className="h-5 w-5" />
+                Admin credit
+              </NavLink>
+            ) : null}
             {navItems.map((item) => (
               <NavLink
                 key={item.to}

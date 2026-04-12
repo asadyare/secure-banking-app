@@ -56,8 +56,8 @@ const TransactionList = ({ transactions, currency = 'USD' }: TransactionListProp
               <p className={`text-sm font-semibold ${txn.type === 'credit' ? 'text-success' : 'text-foreground'}`}>
                 {txn.type === 'credit' ? '+' : '-'}{formatAmount(txn.amount)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Bal: {formatAmount(txn.balance_after)}
+              <p className="text-xs font-medium tabular-nums text-muted-foreground">
+                Balance after: {formatAmount(Number(txn.balance_after))}
               </p>
             </div>
           </div>

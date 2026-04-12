@@ -1,36 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import AccountCard from '@/components/AccountCard';
 import TransactionList from '@/components/TransactionList';
 import { Wallet, TrendingUp, ArrowLeftRight, Clock } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [profile, setProfile] = useState<any>(null);
+  const [accounts, setAccounts] = useState<Tables<'accounts'>[]>([]);
+  const [transactions, setTransactions] = useState<Tables<'transactions'>[]>([]);
+  const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+    const [accountsRes, transactionsRes, profileRes] = await Promise.all([
+      supabase.from('accounts').select('*').order('created_at', { ascending: true }),
+      supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(10),
+      supabase.from('profiles').select('*').eq('user_id', user.id).single(),
+    ]);
+
+    if (accountsRes.data) setAccounts(accountsRes.data);
+    if (transactionsRes.data) setTransactions(transactionsRes.data);
+    if (profileRes.data) setProfile(profileRes.data);
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
+    void fetchData();
+  }, [user, fetchData]);
 
-    const fetchData = async () => {
-      const [accountsRes, transactionsRes, profileRes] = await Promise.all([
-        supabase.from('accounts').select('*').order('created_at', { ascending: true }),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(10),
-        supabase.from('profiles').select('*').eq('user_id', user.id).single(),
-      ]);
-
-      if (accountsRes.data) setAccounts(accountsRes.data);
-      if (transactionsRes.data) setTransactions(transactionsRes.data);
-      if (profileRes.data) setProfile(profileRes.data);
-      setLoading(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`dashboard-live-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'accounts', filter: `user_id=eq.${user.id}` },
+        () => {
+          void fetchData();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => {
+          void fetchData();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
     };
-
-    fetchData();
-  }, [user]);
+  }, [user?.id, fetchData]);
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
   const formatCurrency = (amount: number) =>
@@ -88,11 +113,15 @@ const Dashboard = () => {
               {accounts.map((account) => (
                 <AccountCard
                   key={account.id}
+                  accountId={account.id}
                   accountName={account.account_name}
                   accountNumber={account.account_number}
                   accountType={account.account_type}
                   balance={Number(account.balance)}
                   currency={account.currency}
+                  cardExpiry={account.card_expiry ?? '05/30'}
+                  isFrozen={account.is_frozen === true}
+                  onAccountUpdated={fetchData}
                 />
               ))}
             </div>

@@ -20,10 +20,12 @@ export type Database = {
           account_number: string
           account_type: Database["public"]["Enums"]["account_type"]
           balance: number
+          card_expiry?: string
           created_at: string
           currency: string
           id: string
           is_active: boolean
+          is_frozen?: boolean
           updated_at: string
           user_id: string
         }
@@ -32,10 +34,12 @@ export type Database = {
           account_number: string
           account_type?: Database["public"]["Enums"]["account_type"]
           balance?: number
+          card_expiry?: string
           created_at?: string
           currency?: string
           id?: string
           is_active?: boolean
+          is_frozen?: boolean
           updated_at?: string
           user_id: string
         }
@@ -44,10 +48,12 @@ export type Database = {
           account_number?: string
           account_type?: Database["public"]["Enums"]["account_type"]
           balance?: number
+          card_expiry?: string
           created_at?: string
           currency?: string
           id?: string
           is_active?: boolean
+          is_frozen?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -93,6 +99,7 @@ export type Database = {
           date_of_birth: string | null
           full_name: string
           id: string
+          is_admin: boolean
           kyc_verified: boolean
           phone: string | null
           updated_at: string
@@ -104,6 +111,7 @@ export type Database = {
           date_of_birth?: string | null
           full_name?: string
           id?: string
+          is_admin?: boolean
           kyc_verified?: boolean
           phone?: string | null
           updated_at?: string
@@ -115,6 +123,7 @@ export type Database = {
           date_of_birth?: string | null
           full_name?: string
           id?: string
+          is_admin?: boolean
           kyc_verified?: boolean
           phone?: string | null
           updated_at?: string
@@ -187,13 +196,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_account_number: { Args: never; Returns: string }
+      admin_credit_account: {
+        Args: { p_amount: number; p_description?: string; p_to_account_id: string }
+        Returns: Json
+      }
+      admin_list_customer_accounts: {
+        Args: { p_email: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          account_number: string
+          balance: number
+          customer_email: string
+          full_name: string
+        }[]
+      }
+      generate_account_number: { Args: Record<string, never>; Returns: string }
       transfer_funds: {
         Args: {
           p_amount: number
           p_description?: string
           p_from_account_id: string
+          p_idempotency_key?: string
           p_to_account_id: string
+        }
+        Returns: Json
+      }
+      transfer_funds_by_account_number: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_from_account_id: string
+          p_idempotency_key?: string
+          p_to_account_number: string
         }
         Returns: Json
       }

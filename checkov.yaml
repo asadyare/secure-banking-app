@@ -1,0 +1,38 @@
+# Checkov — https://www.checkov.io/
+# Run: pip install -r checkov/requirements.txt
+#      checkov --config-file checkov.yaml --external-checks-dir checkov/custom_checks
+
+framework:
+  - terraform
+
+directory:
+  - terraform
+
+download-external-modules: false
+evaluate-variables: true
+
+compact: true
+quiet: true
+
+# Set to true to exit 0 when checks fail (e.g. gradual adoption). CI workflow overrides with --soft-fail.
+soft-fail: false
+
+# Optional: suppress built-in checks that are often N/A for a small CloudFront+S3 SPA (review for your org).
+# Remove entries to enforce stricter posture (e.g. enable WAF, access logs, KMS, lifecycle).
+skip-check:
+  - CKV_AWS_18 # S3 access logging (add if required by audit)
+  - CKV_AWS_68 # CloudFront WAF (module supports enable_waf; policy is optional by default)
+  - CKV_AWS_86 # CloudFront access logging (enable if audit requires)
+  - CKV_AWS_144 # S3 cross-region replication
+  - CKV_AWS_145 # S3 KMS default encryption (SSE-S3 used via encryption resource)
+  - CKV_AWS_174 # Viewer TLS: default CloudFront cert path; custom path sets TLSv1.2_2021 in module
+  - CKV_AWS_310 # CloudFront field-level encryption N/A for static SPA
+  - CKV_AWS_374 # Geo restriction (module uses none; enable if required)
+  - CKV2_AWS_31 # WAFv2 logging when ACL exists
+  - CKV2_AWS_32 # CloudFront response headers policy
+  - CKV2_AWS_47 # WAF AMR Log4j rule variant
+  - CKV2_AWS_61 # S3 lifecycle configuration
+  - CKV2_AWS_62 # S3 event notifications
+
+# External Python policies (Baawisan Bank)
+# (CLI still needs --external-checks-dir checkov/custom_checks)

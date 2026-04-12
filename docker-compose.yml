@@ -1,0 +1,20 @@
+# Requires Docker Compose v2 with build secrets (Compose 2.24+).
+# Ensure `.env` exists (copy from .env.example), then: npm run docker:up
+#
+# Compose mounts `.env` as a build secret only; it is not copied into the image by COPY.
+#
+# If host port 8080 is already in use, set COMPOSE_PORT in `.env`, e.g. COMPOSE_PORT=8081
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - supabase_env
+    ports:
+      - "${COMPOSE_PORT:-8080}:8080"
+
+secrets:
+  supabase_env:
+    file: .env

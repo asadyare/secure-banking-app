@@ -1,0 +1,269 @@
+# Unified CI: quality gates + security scanning (IaC, dependency & container-adjacent vulns, DAST baseline).
+# CodeQL: .github/workflows/codeql.yml (push/PR + weekly). TruffleHog: secret-scan.yml. Gitleaks: below.
+# Rationale: Semgrep (fast policy-style rules), Trivy (CVEs in deps/files),
+# Checkov (Terraform posture), Gitleaks (secrets), ZAP baseline (passive DAST on built SPA).
+# SARIF: Trivy uploads to the Security tab (skipped for PRs from forks — GitHub limitation).
+# Dependency Review: PR-only; needs Dependency graph enabled (default on public repos).
+# SBOM: CycloneDX JSON via @cyclonedx/cdxgen (full tree + --required-only “production” view).
+
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # --- Core: same as local pre-push expectations (lint, tests, build, audit) ---
+  build-test-audit:
+    name: Lint, test, build, npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden runner (network egress audit)
+        uses: step-security/harden-runner@v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          npm run sbom
+          npm run sbom:production
+
+      - name: npm audit (production, high+)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: |
+            sbom/sbom.cyclonedx.json
+            sbom/sbom.cyclonedx.production.json
+          retention-days: 90
+
+      - name: Upload dist (for ZAP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+          retention-days: 1
+
+  # --- Dependency Review: block new vulns in PR dependency changes (public repos + GHAS) ---
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Align with npm audit --omit=dev --audit-level=high in build-test-audit
+          fail-on-severity: high
+
+  # --- CodeQL: see .github/workflows/codeql.yml (weekly + push/PR; avoids duplicate analysis) ---
+
+  # --- Terraform: formatting + config validation (no cloud credentials) ---
+  terraform:
+    name: Terraform fmt & validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+          terraform_wrapper: false
+
+      - name: Terraform format (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+  # --- Checkov: IaC policy (matches repo checkov.yaml + custom checks) ---
+  checkov:
+    name: Checkov (Terraform)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Checkov
+        run: pip install -r checkov/requirements.txt
+
+      - name: Run Checkov
+        run: |
+          checkov \
+            --config-file checkov.yaml \
+            --external-checks-dir checkov/custom_checks \
+            --framework terraform \
+            --soft-fail false
+
+  # --- Trivy: known CVEs in lockfiles and misconfigs on disk + SARIF to Security tab ---
+  trivy:
+    name: Trivy (filesystem)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          skip-dirs: node_modules,.git,dist
+          exit-code: "1"
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload Trivy SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: >
+          always() &&
+          (hashFiles('trivy-results.sarif') != '') &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-fs
+
+      - name: Fail on Trivy findings
+        if: steps.trivy.outcome == 'failure'
+        run: exit 1
+
+  # --- Semgrep: fast SAST with community rulesets (no Semgrep Cloud token required) ---
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/typescript \
+            --config p/react \
+            --config p/javascript \
+            --config p/owasp-top-ten \
+            --error \
+            --exclude '**/node_modules/**' \
+            --exclude '**/dist/**'
+
+  # --- Gitleaks: secret detection in full git history (aligns with local hooks) ---
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # --- OWASP ZAP baseline: passive checks against locally served production build ---
+  zap-baseline:
+    name: OWASP ZAP (baseline DAST)
+    needs: [build-test-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+
+      # Background process survives until job end; ZAP runs in Docker so use host gateway.
+      - name: Start static server (SPA)
+        run: |
+          npx --yes serve@14 -s dist -l 4173 &
+          for i in $(seq 1 60); do
+            if curl -sf "http://127.0.0.1:4173/" >/dev/null; then
+              echo "Server ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: "http://host.docker.internal:4173"
+          fail_action: true
+          allow_issue_writing: false
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-baseline-report
+          path: report_html.html
+          if-no-files-found: ignore

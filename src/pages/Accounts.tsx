@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { newAccountSchema } from '@/lib/validation/banking';
+import type { Tables } from '@/integrations/supabase/types';
 import DashboardLayout from '@/components/DashboardLayout';
 import AccountCard from '@/components/AccountCard';
 import { Button } from '@/components/ui/button';
@@ -14,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 const Accounts = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Tables<'accounts'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
@@ -32,17 +34,37 @@ const Accounts = () => {
   }, [user]);
 
   const handleCreateAccount = async () => {
-    if (!newAccountName.trim()) return;
+    const parsed = newAccountSchema.safeParse({
+      accountName: newAccountName,
+      accountType: newAccountType,
+    });
+    if (!parsed.success) {
+      toast({
+        title: 'Invalid input',
+        description: parsed.error.issues[0]?.message ?? 'Check account details.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setCreating(true);
 
-    // Generate account number client-side
-    const accNum = 'ACC' + Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+    /* Empty object helps PostgREST match a zero-argument RPC signature */
+    const { data: accNum, error: genErr } = await supabase.rpc('generate_account_number', {});
+    if (genErr || typeof accNum !== 'string') {
+      toast({
+        title: 'Error',
+        description: genErr?.message ?? 'Could not generate account number.',
+        variant: 'destructive',
+      });
+      setCreating(false);
+      return;
+    }
 
     const { error } = await supabase.from('accounts').insert({
       user_id: user!.id,
       account_number: accNum,
-      account_type: newAccountType as any,
-      account_name: newAccountName.trim(),
+      account_type: parsed.data.accountType,
+      account_name: parsed.data.accountName,
       balance: 0,
     });
 
@@ -118,11 +140,16 @@ const Accounts = () => {
             {accounts.map((account) => (
               <AccountCard
                 key={account.id}
+                accountId={account.id}
                 accountName={account.account_name}
                 accountNumber={account.account_number}
                 accountType={account.account_type}
                 balance={Number(account.balance)}
                 currency={account.currency}
+                cardExpiry={account.card_expiry ?? '05/30'}
+                isFrozen={account.is_frozen === true}
+                copyableAccountNumber
+                onAccountUpdated={fetchAccounts}
               />
             ))}
           </div>

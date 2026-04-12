@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+set -e
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "→ lint-staged (ESLint on staged files)"
+npx lint-staged
+
+echo "→ gitleaks (secrets in staged changes)"
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo ""
+  echo "ERROR: gitleaks is not installed or not on PATH."
+  echo "Install: https://github.com/gitleaks/gitleaks#installing"
+  echo "  Windows: winget install gitleaks OR choco install gitleaks OR Scoop: scoop install gitleaks"
+  echo "  macOS: brew install gitleaks"
+  exit 1
+fi
+gitleaks protect --staged --redact --verbose

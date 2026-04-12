@@ -9,8 +9,27 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Python
+**/__pycache__/
+*.py[cod]
+
+# Generated CycloneDX SBOM (npm run sbom)
+sbom/
 dist-ssr
 *.local
+
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Supabase CLI temp
+supabase/.temp/
+
+# Vite
+vite-debug.log*
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +41,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Terraform (keep terraform/.terraform.lock.hcl committed)
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+terraform/*.auto.tfvars
+terraform/backend-config.secrets.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

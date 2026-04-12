@@ -1,0 +1,30 @@
+# Git / IDE
+.git
+.github
+.vscode
+.idea
+# Dependencies & build output
+node_modules
+dist
+dist-ssr
+coverage
+sbom
+
+# Env (inject at build via --build-arg / compose)
+.env
+.env.*
+!.env.example
+
+# Terraform & infra (not needed for frontend image)
+terraform
+checkov
+*.tfvars
+
+# Tests & tooling
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+playwright-report
+test-results
+.husky

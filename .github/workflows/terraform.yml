@@ -1,0 +1,95 @@
+# Terraform plan on PR / push; apply only via workflow_dispatch (manual).
+# Requires: OIDC IAM role + S3 state bucket secrets. See docs/github-oidc-aws.md
+
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      terraform_apply:
+        description: "Run terraform apply (writes to AWS). Requires reviewed plan."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-${{ github.repository }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: terraform
+
+jobs:
+  terraform:
+    # Do not run OIDC jobs for PRs from forks (secrets unavailable)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+          terraform_wrapper: false
+
+      - name: Write terraform.tfvars from secret (optional)
+        env:
+          TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: |
+          if [ -n "$TFVARS" ]; then
+            printf '%s\n' "$TFVARS" > terraform.tfvars
+          fi
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (S3 backend)
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
+          TF_STATE_KEY: ${{ secrets.TF_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          KEY="${TF_STATE_KEY:-baawisan-bank/terraform.tfstate}"
+          terraform init -input=false \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan -no-color
+
+      - name: Terraform apply
+        if: github.event_name == 'workflow_dispatch' && inputs.terraform_apply == true
+        run: terraform apply -auto-approve tfplan
