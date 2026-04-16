@@ -18,7 +18,7 @@ aws iam create-open-id-connect-provider \
 ## 2. S3 backend for Terraform state (recommended before CI apply)
 
 1. Create an S3 bucket (e.g. `your-company-terraform-state`) with **versioning** enabled and **encryption**.
-2. Create a DynamoDB table for state locking, e.g. `terraform-locks`, partition key `LockID` (String).
+2. Create a DynamoDB table for state locking, e.g. `terraform-locks`, with partition key **`LockID`** (String). Terraform’s AWS backend requires this exact attribute name (case-sensitive). A table created with `lockID` or another key will fail with `ValidationException` / “Missing the key lockID”.
 3. Block public access on the state bucket.
 
 Local init:
@@ -119,7 +119,7 @@ Replace `YOUR_WEBSITE_BUCKET` and tighten `cloudfront:CreateInvalidation` to the
 | `TF_STATE_BUCKET` | Terraform — state bucket name |
 | `TF_STATE_KEY` | Optional; default in workflow is `baawisan-bank/terraform.tfstate` |
 | `TF_LOCK_TABLE` | DynamoDB lock table name |
-| `AWS_REGION` | Optional; defaults to `eu-west-1` in workflows |
+| `AWS_REGION` | Optional; workflows default to **`us-east-1`** (must match your state **S3 bucket** region in `terraform init -backend-config`) |
 | `TERRAFORM_TFVARS` | Optional multiline — full `terraform.tfvars` for `terraform plan/apply` in CI |
 | `AWS_DEPLOY_ROLE_ARN` | Deploy workflow — if empty, falls back to `AWS_ROLE_ARN` |
 | `S3_BUCKET_ID` | Website bucket name (from `terraform output`) |

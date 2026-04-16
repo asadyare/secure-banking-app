@@ -40,7 +40,8 @@ jobs:
 
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: eu-west-1
+      # Must match the S3 state bucket region (and GitHub secrets TF_STATE_*). This repo defaults to us-east-1.
+      AWS_REGION: us-east-1
 
     steps:
       - name: Checkout

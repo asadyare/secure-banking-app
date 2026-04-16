@@ -29,7 +29,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: eu-west-1
+      # Align with Terraform primary region / state bucket (us-east-1). Change if your stack lives elsewhere.
+      AWS_REGION: us-east-1
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 

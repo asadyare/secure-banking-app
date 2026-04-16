@@ -73,7 +73,7 @@ The workflow **Deploy frontend** (`.github/workflows/deploy-frontend.yml`) build
 
 **OIDC:** The deploy role must trust GitHub Actions (`sts:AssumeRoleWithWebIdentity`) and allow `s3:PutObject`/`DeleteObject`/… on the website bucket and `cloudfront:CreateInvalidation` on your distribution. See **[docs/github-oidc-aws.md](github-oidc-aws.md)** §5–6.
 
-**Region:** Workflow uses **`eu-west-1`** (`deploy-frontend.yml`). Keep Terraform primary region aligned or adjust the workflow env if your bucket is elsewhere.
+**Region:** Workflows use **`us-east-1`** (`terraform.yml`, `deploy-frontend.yml`). Keep this aligned with your Terraform `aws_region`, state bucket region, and `terraform init` backend `region`. If your resources live in another region, change the workflow `AWS_REGION` and backend config together.
 
 ---
 
@@ -90,7 +90,7 @@ With AWS credentials that can sync the bucket and invalidate CloudFront:
 ```bash
 npm ci
 npm run build
-aws s3 sync dist/ "s3://YOUR_BUCKET_ID/" --delete --region eu-west-1
+aws s3 sync dist/ "s3://YOUR_BUCKET_ID/" --delete --region us-east-1
 aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
 ```
 

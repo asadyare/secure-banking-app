@@ -22,7 +22,7 @@ terraform init -backend-config=backend-config.secrets.hcl
 
 # Or one-shot init:
 terraform init -backend-config="bucket=YOUR_BUCKET" -backend-config="key=baawisan-bank/terraform.tfstate" \
-  -backend-config="region=eu-west-1" -backend-config="dynamodb_table=YOUR_LOCK_TABLE" -backend-config="encrypt=true"
+  -backend-config="region=us-east-1" -backend-config="dynamodb_table=YOUR_LOCK_TABLE" -backend-config="encrypt=true"
 
 terraform plan
 terraform apply
@@ -65,7 +65,7 @@ terraform {
   backend "s3" {
     bucket         = "your-terraform-state-bucket"
     key            = "baawisan-bank/terraform.tfstate"
-    region         = "eu-west-1"
+    region         = "us-east-1"
     dynamodb_table = "terraform-locks"
     encrypt        = true
   }
@@ -73,6 +73,21 @@ terraform {
 ```
 
 Create the bucket and table first, then `terraform init -migrate-state`.
+
+### DynamoDB lock table schema
+
+Terraform expects the lock table partition key to be **`LockID`** (String), not `lockID` or other names. If `terraform plan` fails with `Missing the key lockID` or schema errors, recreate the table:
+
+```bash
+aws dynamodb create-table \
+  --table-name terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region us-east-1
+```
+
+Use the same **region** as your state bucket. Replace `terraform-locks` if you use a different table name and set `dynamodb_table` accordingly.
 
 ## CI/CD (GitHub Actions + OIDC)
 
