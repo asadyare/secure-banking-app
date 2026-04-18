@@ -186,8 +186,14 @@ jobs:
           format: sarif
           output: trivy-results.sarif
 
+      # Best-effort upload to the Security tab. Requires Code Scanning to be enabled
+      # in repo Settings -> Code security -> Code scanning. If disabled (or the repo
+      # lacks GHAS for private repos), the upload is skipped rather than failing the
+      # job. The hard security gate is the "Fail on Trivy findings" step below, which
+      # is driven purely by Trivy's own exit code.
       - name: Upload Trivy SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
         if: >
           always() &&
           (hashFiles('trivy-results.sarif') != '') &&
@@ -195,6 +201,16 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy-fs
+
+      # Always preserve the SARIF output as a workflow artifact so findings are
+      # retrievable even when Code Scanning upload is unavailable.
+      - name: Upload Trivy SARIF artifact
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results-sarif
+          path: trivy-results.sarif
+          retention-days: 30
 
       - name: Fail on Trivy findings
         if: steps.trivy.outcome == 'failure'
