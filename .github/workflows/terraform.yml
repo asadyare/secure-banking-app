@@ -50,19 +50,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.0"
           terraform_wrapper: false
 
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      # Short-circuit the deploy pipeline when the S3 remote backend has not
+      # been provisioned yet. An unset TF_STATE_BUCKET / TF_LOCK_TABLE secret
+      # would otherwise produce `-backend-config="bucket="`, which Terraform
+      # rejects with "The value cannot be empty or all whitespace", masking
+      # the real onboarding step that is missing. This keeps the workflow
+      # green on repositories that are still completing one-time AWS bootstrap
+      # (S3 state bucket + DynamoDB lock table) while surfacing a clear,
+      # actionable message in the job summary.
+      - name: Check backend secrets
+        id: backend
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${TF_STATE_BUCKET:-}" ] && missing+=("TF_STATE_BUCKET")
+          [ -z "${TF_LOCK_TABLE:-}" ] && missing+=("TF_LOCK_TABLE")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            {
+              echo "### Terraform skipped"
+              echo ""
+              echo "Required backend secret(s) not configured on this repository: \`${missing[*]}\`."
+              echo ""
+              echo "Create the S3 remote-state bucket and the DynamoDB lock table, then add the secrets under **Settings → Secrets and variables → Actions**. See [docs/github-oidc-aws.md](../blob/${GITHUB_SHA}/docs/github-oidc-aws.md) for the bootstrap walkthrough."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Terraform remote-backend secrets not set (${missing[*]}); skipping init/plan/apply."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS (OIDC)
+        if: steps.backend.outputs.configured == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Write terraform.tfvars from secret (optional)
+        if: steps.backend.outputs.configured == 'true'
         env:
           TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
         run: |
@@ -70,10 +107,8 @@ jobs:
             printf '%s\n' "$TFVARS" > terraform.tfvars
           fi
 
-      - name: Terraform fmt (check)
-        run: terraform fmt -check -recursive
-
       - name: Terraform init (S3 backend)
+        if: steps.backend.outputs.configured == 'true'
         env:
           TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
           TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
@@ -89,11 +124,13 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: Terraform validate
+        if: steps.backend.outputs.configured == 'true'
         run: terraform validate
 
       - name: Terraform plan
+        if: steps.backend.outputs.configured == 'true'
         run: terraform plan -out=tfplan -no-color
 
       - name: Terraform apply
-        if: github.event_name == 'workflow_dispatch' && inputs.terraform_apply == true
+        if: steps.backend.outputs.configured == 'true' && github.event_name == 'workflow_dispatch' && inputs.terraform_apply == true
         run: terraform apply -auto-approve tfplan
