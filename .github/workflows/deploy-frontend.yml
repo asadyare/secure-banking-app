@@ -1,7 +1,7 @@
 # Build Vite app and sync to S3 + invalidate CloudFront. Uses OIDC (no long-lived AWS keys).
 # Set S3_BUCKET_ID and CLOUDFRONT_DISTRIBUTION_ID from `terraform output` after first apply.
 
-name: Deploy frontend
+name: Deploy frontend (CD pipeline)
 
 on:
   push:
