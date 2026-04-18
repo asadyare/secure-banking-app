@@ -56,20 +56,91 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Verify that the deploy targets (AWS role, S3 bucket id, CloudFront
+      # distribution id) are all configured as repository secrets before we
+      # attempt OIDC. If any are missing, emit a clear actionable message in
+      # the job summary and skip the AWS-dependent steps cleanly rather than
+      # surfacing a cryptic `Not authorized` / `NoSuchBucket` error that
+      # masks the actual onboarding gap.
+      - name: Check deploy secrets
+        id: secrets_check
+        env:
+          ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN || secrets.AWS_ROLE_ARN }}
+          BUCKET: ${{ secrets.S3_BUCKET_ID }}
+          DIST_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${ROLE_ARN:-}" ] && missing+=("AWS_DEPLOY_ROLE_ARN or AWS_ROLE_ARN")
+          [ -z "${BUCKET:-}" ] && missing+=("S3_BUCKET_ID")
+          [ -z "${DIST_ID:-}" ] && missing+=("CLOUDFRONT_DISTRIBUTION_ID")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            {
+              echo "### Frontend deploy skipped"
+              echo ""
+              echo "Required deploy secret(s) not configured on this repository:"
+              for s in "${missing[@]}"; do echo "- \`${s}\`"; done
+              echo ""
+              echo "Populate them from \`terraform output\` after the first Terraform apply. See \`docs/github-oidc-aws.md\` for the bootstrap walkthrough."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Deploy secrets not set (${missing[*]}); skipping AWS deploy."
+            echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "secrets_ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure AWS (OIDC)
+        if: steps.secrets_check.outputs.secrets_ok == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # Prefer a narrow deploy-only role; fall back to AWS_ROLE_ARN if unset.
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN || secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # The bucket / distribution referenced by the secrets may not yet exist
+      # (e.g. stack destroyed, secrets pointing at an old environment, or
+      # Terraform apply has not been run). Detect this explicitly so the
+      # failure mode is an actionable summary rather than
+      # `NoSuchBucket` / `NoSuchDistribution` mid-sync.
+      - name: Verify deploy targets exist
+        id: targets_check
+        if: steps.secrets_check.outputs.secrets_ok == 'true'
+        env:
+          BUCKET: ${{ secrets.S3_BUCKET_ID }}
+          DIST_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          set -uo pipefail
+          problems=()
+          if ! aws s3api head-bucket --bucket "${BUCKET}" 2>/dev/null; then
+            problems+=("S3 bucket \`${BUCKET}\` not found or inaccessible")
+          fi
+          if ! aws cloudfront get-distribution --id "${DIST_ID}" >/dev/null 2>&1; then
+            problems+=("CloudFront distribution \`${DIST_ID}\` not found or inaccessible")
+          fi
+          if [ "${#problems[@]}" -gt 0 ]; then
+            {
+              echo "### Frontend deploy skipped"
+              echo ""
+              echo "Deploy targets referenced by the repository secrets are missing or inaccessible:"
+              for p in "${problems[@]}"; do echo "- ${p}"; done
+              echo ""
+              echo "Run \`terraform apply\` to (re)create the static-site stack, then refresh \`S3_BUCKET_ID\` and \`CLOUDFRONT_DISTRIBUTION_ID\` from \`terraform output\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Deploy targets missing; skipping S3 sync and CloudFront invalidation."
+            echo "targets_ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "targets_ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Sync to S3
+        if: steps.targets_check.outputs.targets_ok == 'true'
         env:
           BUCKET: ${{ secrets.S3_BUCKET_ID }}
         run: |
           aws s3 sync dist/ "s3://${BUCKET}/" --delete
 
       - name: Invalidate CloudFront
+        if: steps.targets_check.outputs.targets_ok == 'true'
         env:
           DIST_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
