@@ -167,7 +167,11 @@ jobs:
 
       - name: Run Trivy
         id: trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        # Pinned to full SHA per GitHub's third-party action hardening guidance.
+        # Tag reference: v0.35.0 (aquasecurity/trivy-action migrated to a v-prefix scheme
+        # after the March 2025 supply-chain incident; un-prefixed tags like 0.28.0 were
+        # removed and must not be used).
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         continue-on-error: true
         with:
           scan-type: fs
