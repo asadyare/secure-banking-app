@@ -22,6 +22,9 @@ permissions:
   contents: read
   pull-requests: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # --- Core: same as local pre-push expectations (lint, tests, build, audit) ---
   build-test-audit:
@@ -239,7 +242,10 @@ jobs:
           name: web-dist
           path: dist/
 
-      # Background process survives until job end; ZAP runs in Docker so use host gateway.
+      # Background process survives until job end. The ZAP action runs its container with
+      # --network=host on Linux runners, so the container shares the runner's network stack
+      # and can reach the server on 127.0.0.1 directly. `host.docker.internal` is a
+      # Docker Desktop (macOS/Windows) convenience and does not resolve on Linux.
       - name: Start static server (SPA)
         run: |
           npx --yes serve@14 -s dist -l 4173 &
@@ -256,7 +262,7 @@ jobs:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: "http://host.docker.internal:4173"
+          target: "http://127.0.0.1:4173"
           fail_action: true
           allow_issue_writing: false
 
