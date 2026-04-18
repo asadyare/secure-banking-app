@@ -111,12 +111,21 @@ jobs:
         run: |
           set -uo pipefail
           problems=()
-          if ! aws s3api head-bucket --bucket "${BUCKET}" 2>/dev/null; then
-            problems+=("S3 bucket \`${BUCKET}\` not found or inaccessible")
+
+          # Capture stderr from head-bucket so the actual AWS error (wrong
+          # region, access denied, NoSuchBucket, etc.) is visible in the log
+          # and in the job summary. Masked-secret values would otherwise make
+          # a silent failure indistinguishable from a legitimate miss.
+          if ! bucket_err=$(aws s3api head-bucket --bucket "${BUCKET}" 2>&1 >/dev/null); then
+            echo "head-bucket failed: ${bucket_err}"
+            problems+=("S3 bucket not found or inaccessible - ${bucket_err}")
           fi
-          if ! aws cloudfront get-distribution --id "${DIST_ID}" >/dev/null 2>&1; then
-            problems+=("CloudFront distribution \`${DIST_ID}\` not found or inaccessible")
+
+          if ! dist_err=$(aws cloudfront get-distribution --id "${DIST_ID}" 2>&1 >/dev/null); then
+            echo "get-distribution failed: ${dist_err}"
+            problems+=("CloudFront distribution not found or inaccessible - ${dist_err}")
           fi
+
           if [ "${#problems[@]}" -gt 0 ]; then
             {
               echo "### Frontend deploy skipped"
@@ -124,7 +133,7 @@ jobs:
               echo "Deploy targets referenced by the repository secrets are missing or inaccessible:"
               for p in "${problems[@]}"; do echo "- ${p}"; done
               echo ""
-              echo "Run \`terraform apply\` to (re)create the static-site stack, then refresh \`S3_BUCKET_ID\` and \`CLOUDFRONT_DISTRIBUTION_ID\` from \`terraform output\`."
+              echo "Run \`terraform apply\` to (re)create the static-site stack, then refresh \`S3_BUCKET_ID\` and \`CLOUDFRONT_DISTRIBUTION_ID\` from \`terraform output\`. If the stack already exists, confirm the deploy role has \`s3:ListBucket\` + \`s3:PutObject\` on the bucket and \`cloudfront:GetDistribution\` + \`cloudfront:CreateInvalidation\` on the distribution, and that the bucket lives in \`${AWS_REGION}\`."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::warning::Deploy targets missing; skipping S3 sync and CloudFront invalidation."
             echo "targets_ok=false" >> "$GITHUB_OUTPUT"
