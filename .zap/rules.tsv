@@ -1,8 +1,11 @@
 # ZAP baseline rules: one rule per line, tab-separated.
 # Fields: <plugin_id>\t<IGNORE|WARN|FAIL>\t<optional url regex>\t<free-form comment>
-# Only the handful of findings that cannot be resolved at the static-server layer
-# are downgraded here; every header-related finding is fixed via serve.json.
+# Header-related findings are fixed at the server layer in serve.json; the rules
+# below cover alerts that cannot be resolved without breaking the app or that
+# represent intentional security trade-offs for a static SPA.
 
+10049	IGNORE		Non-Storable / Storable Content - Cache-Control: no-store is intentional for a banking SPA
+10055	IGNORE		CSP style-src unsafe-inline - required by Radix UI, shadcn and Tailwind runtime inline styles; nonces are not feasible on a fully static build
 10096	IGNORE		Timestamp Disclosure (Unix) - false positive on 10-digit integers in minified JS bundles
 10109	IGNORE		Modern Web Application - informational SPA detection, not a vulnerability
 10110	IGNORE		Dangerous JS Functions - heuristic flags benign usage inside third-party libraries
