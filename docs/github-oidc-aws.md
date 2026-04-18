@@ -133,6 +133,38 @@ Fork PRs: GitHub does not pass secrets to workflows from forks unless you change
 
 In the IAM role, set **session tags** or **external ID** only if you need multi-account; OIDC alone maps one role per repo/branch pattern.
 
+## 8. Troubleshooting: `Not authorized to perform sts:AssumeRoleWithWebIdentity`
+
+GitHub is reaching AWS, but the **role’s trust policy** rejects this workflow. Check in order:
+
+1. **Secret points at the right role**  
+   `AWS_DEPLOY_ROLE_ARN` (deploy) or `AWS_ROLE_ARN` (Terraform) must be the **ARN of the role that has the GitHub OIDC trust** (e.g. `arn:aws:iam::ACCOUNT:role/MyGitHubDeployRole`). If you created a **second** deploy-only role, that role needs its **own** trust policy — not only the Terraform role.
+
+2. **`sub` must match this repo and ref**  
+   - Use `repo:OWNER/REPO:*` while testing (matches any ref, including `workflow_dispatch`).  
+   - **User repos:** `OWNER` is your **GitHub username**, not an org.  
+   - **Org repos:** `OWNER` is the org name.  
+   - Repo name is **case-sensitive** and must match the URL (`secure-banking-app`, etc.).  
+   - If you used **main-only** trust (`repo:OWNER/REPO:ref:refs/heads/main`) but the workflow runs on **`develop`** or another branch, OIDC will be denied — widen the condition or add the branch you use.
+
+3. **Audience**  
+   Trust policy condition must include  
+   `"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"`  
+   (as in §3). Do **not** use the OIDC thumbprint (`6938fd4d…`) here — that value is only for registering the identity provider, not for the JWT `aud` claim.
+
+4. **OIDC provider**  
+   The role’s `Principal` must be  
+   `arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com`  
+   for the **same AWS account** as the role.
+
+5. **Fork PRs**  
+   Secrets are not available on fork PR workflows by default; OIDC deploy from forks needs a different, careful pattern — use same-repo branches for deploy testing.
+
+6. **Malformed `sub` string**  
+   The claim must look exactly like `repo:OWNER/REPO:ref:refs/heads/BRANCH`. A common paste error is duplicating the branch part, e.g. `...:ref:refs/heads/ref:refs/heads/main`, which **never** matches GitHub’s token and causes `AssumeRoleWithWebIdentity` to fail.
+
+After changing trust in IAM, wait a few seconds and **re-run** the failed workflow job (no code change required).
+
 ---
 
 *See `.github/workflows/terraform.yml` and `deploy-frontend.yml` for exact env usage.*

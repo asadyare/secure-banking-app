@@ -1,13 +1,16 @@
-# Terraform plan on PR / push; apply only via workflow_dispatch (manual).
+# Terraform plan on push to protected branches; apply only via workflow_dispatch (manual).
 # Requires: OIDC IAM role + S3 state bucket secrets. See docs/github-oidc-aws.md
+#
+# Pull-request runs are intentionally omitted: the AWS IAM role trust policy is
+# scoped to protected branch refs (e.g. refs/heads/main) for least-privilege,
+# so PR-ref OIDC tokens are rejected with `sts:AssumeRoleWithWebIdentity`
+# AccessDenied. Credential-free PR validation (terraform fmt -check + validate)
+# runs in ci.yml's `terraform` job, which provides equivalent signal without
+# widening the trust policy.
 
 name: Terraform
 
 on:
-  pull_request:
-    paths:
-      - "terraform/**"
-      - ".github/workflows/terraform.yml"
   push:
     branches: [main, master, develop]
     paths:
@@ -25,6 +28,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: terraform-${{ github.repository }}
   cancel-in-progress: false
@@ -35,9 +41,6 @@ defaults:
 
 jobs:
   terraform:
-    # Do not run OIDC jobs for PRs from forks (secrets unavailable)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-
     runs-on: ubuntu-latest
     env:
       # Must match the S3 state bucket region (and GitHub secrets TF_STATE_*). This repo defaults to us-east-1.
