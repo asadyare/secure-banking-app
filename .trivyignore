@@ -1,0 +1,13 @@
+# Trivy ignore file. One ID per line. Comments start with '#'.
+# Rationale mirrors the intentional skips in checkov.yaml so posture decisions
+# are documented in one coherent place.
+
+# CloudFront WAF is opt-in via module variable `enable_waf`; a default WAFv2
+# web ACL carries non-trivial cost and AWS-managed rule subscription fees, so
+# the module ships it off. Matches CKV_AWS_68 skip in checkov.yaml.
+AVD-AWS-0011
+
+# S3 bucket uses SSE-S3 (AES256) by default because the static site stores no
+# customer data and a customer-managed KMS key would add monthly cost and key
+# rotation overhead for no marginal risk reduction. Matches CKV_AWS_145 skip.
+AVD-AWS-0132

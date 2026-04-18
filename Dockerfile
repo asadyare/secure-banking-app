@@ -21,9 +21,14 @@ COPY . .
 RUN --mount=type=secret,id=supabase_env \
     set -a && . /run/secrets/supabase_env && set +a && npm run build
 
-FROM nginx:1.27-alpine AS runtime
+# Unprivileged image: runs as the `nginx` user (uid 101), listens on 8080 by default,
+# and has `/etc/nginx`, `/var/cache/nginx`, `/var/run` pre-chowned for non-root use.
+# This resolves Trivy's AVD-DS-0002 without having to hand-patch permissions.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
+
+USER nginx
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
