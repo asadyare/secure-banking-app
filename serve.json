@@ -1,5 +1,4 @@
 {
-  "$schema": "https://raw.githubusercontent.com/vercel/serve-handler/main/schema.json",
   "headers": [
     {
       "source": "**",
