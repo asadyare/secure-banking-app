@@ -26,6 +26,7 @@ skip-check:
   - CKV_AWS_144 # S3 cross-region replication
   - CKV_AWS_145 # S3 KMS default encryption (SSE-S3 used via encryption resource)
   - CKV_AWS_174 # Viewer TLS: default CloudFront cert path; custom path sets TLSv1.2_2021 in module
+  - CKV_AWS_259 # HSTS preload is an irreversible, per-domain commitment that requires registration at hstspreload.org; operators opt in via hsts_preload / hsts_include_subdomains in terraform.tfvars
   - CKV_AWS_310 # CloudFront field-level encryption N/A for static SPA
   - CKV_AWS_374 # Geo restriction (module uses none; enable if required)
   - CKV2_AWS_31 # WAFv2 logging when ACL exists
