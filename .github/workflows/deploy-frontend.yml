@@ -91,7 +91,7 @@ jobs:
 
       - name: Configure AWS (OIDC)
         if: steps.secrets_check.outputs.secrets_ok == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           # Prefer a narrow deploy-only role; fall back to AWS_ROLE_ARN if unset.
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN || secrets.AWS_ROLE_ARN }}
