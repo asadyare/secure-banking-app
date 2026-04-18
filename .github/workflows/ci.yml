@@ -6,7 +6,7 @@
 # Dependency Review: PR-only; needs Dependency graph enabled (default on public repos).
 # SBOM: CycloneDX JSON via @cyclonedx/cdxgen (full tree + --required-only “production” view).
 
-name: CI
+name: CI (Continuous Integration Pipeline)
 
 on:
   push:
