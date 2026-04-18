@@ -145,13 +145,14 @@ jobs:
       - name: Install Checkov
         run: pip install -r checkov/requirements.txt
 
+      # Hard-fail on findings is the default; `soft-fail: false` is also pinned in checkov.yaml.
+      # `--soft-fail` is a boolean switch (no value), so passing `false` would break argparse.
       - name: Run Checkov
         run: |
           checkov \
             --config-file checkov.yaml \
             --external-checks-dir checkov/custom_checks \
-            --framework terraform \
-            --soft-fail false
+            --framework terraform
 
   # --- Trivy: known CVEs in lockfiles and misconfigs on disk + SARIF to Security tab ---
   trivy:
