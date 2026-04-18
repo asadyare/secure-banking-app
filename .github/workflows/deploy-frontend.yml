@@ -112,19 +112,45 @@ jobs:
           set -uo pipefail
           problems=()
 
-          # Capture stderr from head-bucket so the actual AWS error (wrong
-          # region, access denied, NoSuchBucket, etc.) is visible in the log
-          # and in the job summary. Masked-secret values would otherwise make
-          # a silent failure indistinguishable from a legitimate miss.
-          if ! bucket_err=$(aws s3api head-bucket --bucket "${BUCKET}" 2>&1 >/dev/null); then
-            echo "head-bucket failed: ${bucket_err}"
-            problems+=("S3 bucket not found or inaccessible - ${bucket_err}")
+          echo "::group::AWS identity & secret shape"
+          aws sts get-caller-identity || true
+          echo "BUCKET length: ${#BUCKET}"
+          echo "DIST_ID length: ${#DIST_ID}"
+          echo "::endgroup::"
+
+          echo "::group::aws s3api head-bucket"
+          set +e
+          bucket_out=$(aws s3api head-bucket --bucket "${BUCKET}" 2>&1)
+          bucket_rc=$?
+          set -e
+          echo "exit=${bucket_rc}"
+          echo "output:"
+          printf '%s\n' "${bucket_out}"
+          echo "::endgroup::"
+          if [ "${bucket_rc}" -ne 0 ]; then
+            problems+=("S3 head-bucket failed (exit ${bucket_rc}): ${bucket_out:-<no stderr>}")
           fi
 
-          if ! dist_err=$(aws cloudfront get-distribution --id "${DIST_ID}" 2>&1 >/dev/null); then
-            echo "get-distribution failed: ${dist_err}"
-            problems+=("CloudFront distribution not found or inaccessible - ${dist_err}")
+          echo "::group::aws cloudfront get-distribution"
+          set +e
+          dist_out=$(aws cloudfront get-distribution --id "${DIST_ID}" 2>&1)
+          dist_rc=$?
+          set -e
+          echo "exit=${dist_rc}"
+          echo "output (truncated):"
+          printf '%s\n' "${dist_out}" | head -20
+          echo "::endgroup::"
+          if [ "${dist_rc}" -ne 0 ]; then
+            problems+=("CloudFront get-distribution failed (exit ${dist_rc}): ${dist_out:-<no stderr>}")
           fi
+
+          echo "::group::Sanity: list-buckets visible to this role"
+          aws s3api list-buckets --query "Buckets[].Name" --output text 2>&1 | tr '\t' '\n' | head -30 || true
+          echo "::endgroup::"
+
+          echo "::group::Sanity: list-distributions visible to this role"
+          aws cloudfront list-distributions --query "DistributionList.Items[].{Id:Id,Origin:Origins.Items[0].DomainName}" --output text 2>&1 | head -30 || true
+          echo "::endgroup::"
 
           if [ "${#problems[@]}" -gt 0 ]; then
             {
