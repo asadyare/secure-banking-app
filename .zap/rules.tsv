@@ -1,0 +1,8 @@
+# ZAP baseline rules: one rule per line, tab-separated.
+# Fields: <plugin_id>\t<IGNORE|WARN|FAIL>\t<optional url regex>\t<free-form comment>
+# Only the handful of findings that cannot be resolved at the static-server layer
+# are downgraded here; every header-related finding is fixed via serve.json.
+
+10096	IGNORE		Timestamp Disclosure (Unix) - false positive on 10-digit integers in minified JS bundles
+10109	IGNORE		Modern Web Application - informational SPA detection, not a vulnerability
+10110	IGNORE		Dangerous JS Functions - heuristic flags benign usage inside third-party libraries

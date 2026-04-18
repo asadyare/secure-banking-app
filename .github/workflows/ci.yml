@@ -242,6 +242,11 @@ jobs:
           name: web-dist
           path: dist/
 
+      # `serve` (via serve-handler) reads serve.json from the directory it is serving,
+      # so we stage the repo's security-header config alongside the built assets.
+      - name: Stage serve.json with security headers
+        run: cp serve.json dist/serve.json
+
       # Background process survives until job end. The ZAP action runs its container with
       # --network=host on Linux runners, so the container shares the runner's network stack
       # and can reach the server on 127.0.0.1 directly. `host.docker.internal` is a
@@ -263,6 +268,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: "http://127.0.0.1:4173"
+          rules_file_name: .zap/rules.tsv
           fail_action: true
           allow_issue_writing: false
 
