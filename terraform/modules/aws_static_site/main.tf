@@ -85,6 +85,13 @@ resource "aws_cloudfront_response_headers_policy" "spa" {
   }
 }
 
+# With a custom ACM cert the viewer_certificate block below pins
+# minimum_protocol_version to TLSv1.2_2021. Without one (local/dev), AWS
+# only accepts `TLSv1` alongside the default *.cloudfront.net cert, so the
+# null branch is an AWS API constraint rather than a policy choice. Semgrep
+# cannot distinguish the two conditional branches at analysis time, so
+# suppress the rule on the resource it matches against.
+# nosemgrep: terraform.aws.security.aws-cloudfront-insecure-tls.aws-insecure-cloudfront-distribution-tls-version
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -142,7 +149,11 @@ resource "aws_cloudfront_distribution" "site" {
     cloudfront_default_certificate = !local.use_custom_domain
     acm_certificate_arn            = local.use_custom_domain ? var.acm_certificate_arn : null
     ssl_support_method             = local.use_custom_domain ? "sni-only" : null
-    minimum_protocol_version       = local.use_custom_domain ? "TLSv1.2_2021" : null
+    # Custom domain path enforces TLSv1.2_2021 (modern). With the default
+    # *.cloudfront.net certificate AWS rejects anything other than `TLSv1`
+    # (or empty), so the null branch is an AWS API constraint, not a policy
+    # choice.
+    minimum_protocol_version = local.use_custom_domain ? "TLSv1.2_2021" : null
   }
 
   tags = var.tags
