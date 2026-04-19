@@ -55,3 +55,13 @@ On Windows, the same commands work in **PowerShell**, **cmd**, or **Git Bash**. 
 - **Docker:** `Dockerfile` + `docker-compose.yml` for local/staging-style runs; production containers are optional—see comparison below.
 
 **[Static vs Docker — comparison and recommendation →](docs/deployment-comparison.md)**
+
+## Case study
+
+A portfolio-ready write-up of the security posture, CI/CD pipeline, and every blocking issue fixed on the way to the first live deploy — with PR/commit/run evidence for each:
+
+- **[docs/case-study/](docs/case-study/README.md)** — start here.
+- **[Architecture](docs/case-study/02-architecture.md)** — runtime, CI/CD, and OIDC trust-model diagrams.
+- **[Incident log](docs/case-study/05-incident-log.md)** — 19 blocking issues in chronological order, each with a deep-dive.
+- **[Security controls](docs/case-study/03-security-controls.md)** — per-scanner breakdown (Semgrep, CodeQL, Trivy, Checkov, ZAP, TruffleHog, Gitleaks, Dependabot).
+- **[Shot-list](docs/case-study/shot-list.md)** — screenshots still to capture (live site, AWS Console, ZAP report).
