@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Harden runner (network egress audit)
-        uses: step-security/harden-runner@v2.13.2
+        uses: step-security/harden-runner@v2.19.0
         with:
           egress-policy: audit
 
