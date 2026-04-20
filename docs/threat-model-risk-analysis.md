@@ -1,6 +1,6 @@
 # Threat model, inherent risk, and risk analysis
 
-**Application:** Baawisan Bank (demo) — React + Supabase (Auth, Postgres, RLS, RPC)  
+**Application:** Secure banking demo — React + Supabase (Auth, Postgres, RLS, RPC)  
 **Document type:** Security architecture review (qualitative)  
 **Related:** `pentest-report.md`, `pentest-phase2-staging-checklist.md`
 
