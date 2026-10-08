@@ -53,10 +53,10 @@ timeline
     ZAP (01-03)            : Docker networking -> serve schema -> header hardening
     IaC (04-06)            : terraform fmt -> Checkov soft-fail -> CKV_AWS_259 skip
     Trivy (07-09)          : Action tag -> permissions -> default-setup
-    PR #18 (10-13)         : bun.lock delete, non-root Docker, .trivyignore, Semgrep
-    PR #20 (14-16)         : CodeQL cleanup, Terraform OIDC scope, TruffleHog SHA
-    PR #21 (17)            : Terraform backend preflight
-    PR #22 (18)            : Deploy preflight
-    PRs #24-25 (19)        : Deploy diagnostics + IAM policy gap
+    PR 18 (10-13)          : bun.lock delete, non-root Docker, .trivyignore, Semgrep
+    PR 20 (14-16)          : CodeQL cleanup, Terraform OIDC scope, TruffleHog SHA
+    PR 21 (17)             : Terraform backend preflight
+    PR 22 (18)             : Deploy preflight
+    PRs 24-25 (19)         : Deploy diagnostics + IAM policy gap
     First live deploy      : run 24605611658 - sync + invalidate green
 ```

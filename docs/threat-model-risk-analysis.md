@@ -23,17 +23,13 @@
 
 ## 2. System context (C4-level)
 
-```Mermaid
-
-[ End user browser ]  --HTTPS-->  [ Static SPA + bundled anon key ]
-                                        |
-                                        v HTTPS (REST / Auth / Realtime)
-                                 [ Supabase project ]
-                                        |
-                    +-------------------+-------------------+
-                    |                   |                   |
-              [ GoTrue Auth ]      [ PostgREST ]        [ Postgres ]
-              [ JWT issuance ]     [ RLS enforced ]     [ RLS + RPCs ]
+```mermaid
+flowchart TD
+  browser["End user browser"] -->|"HTTPS"| spa["Static SPA + bundled anon key"]
+  spa -->|"HTTPS (REST / Auth / Realtime)"| project["Supabase project"]
+  project --> auth["GoTrue Auth<br/>JWT issuance"]
+  project --> api["PostgREST<br/>RLS enforced"]
+  project --> db["Postgres<br/>RLS + RPCs"]
 ```
 
 **Primary assets:** User credentials (via Supabase Auth), session tokens (browser storage), account balances, transaction ledger, PII in `profiles`, admin privilege flag.
